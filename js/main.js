@@ -37,7 +37,7 @@ function getRandomElement(array, exceptions)
 {
     //Returns a random element from array
     let element = array[Math.floor(Math.random() * array.length)];
-    //Exceptions is an array holding elements from array to be excluded
+    //Exceptions is an array holding elements from array to be excluded.
     if(exceptions){
         while (exceptions.includes(element)){
             element = array[Math.floor(Math.random() * array.length)];
@@ -71,26 +71,23 @@ function pairAllParticipants ()
     console.error('List for ADMIN review: ', forAdminAttention);
 
     //Push any stragglers with unassigned in either slot in new array for re-assignment
-    if (stragglers.length > 0)
-    {
-        candidates.forEach(user => {
-            if (user.giftee === null || user.gifter === null){
-                stragglers.push(user);
-                console.log(user.name, ' ADDED to Stragglers');
-                //If straggler is already in admin list, pop off. Admin list users are helpless cases. IE: banned by all
-                forAdminAttention.forEach(element => {
-                    if (element === user){
-                        stragglers.pop();
-                        console.log('REMOVED ', user.name, ' from Stragglers');
-                    }
-                })
-            }
-        })
-        stragglers.forEach(user => {
-            assignment(user, candidates);
-            console.warn(user.name, ' giftee: ', user.giftee, ' gifter: ', user.gifter);
-        })
-    }
+    candidates.forEach(user => {
+        if (user.giftee === null || user.gifter === null){
+            stragglers.push(user);
+            console.log(user.name, ' ADDED to Stragglers');
+            //If straggler is already in admin list, pop off. Admin list users are helpless cases. IE: banned by all
+            forAdminAttention.forEach(element => {
+                if (element === user){
+                    stragglers.pop();
+                    console.log('REMOVED ', user.name, ' from Stragglers');
+                }
+            })
+        }
+    })
+    stragglers.forEach(user => {
+        assignment(user, candidates);
+        console.warn(user.name, ' giftee: ', user.giftee, ' gifter: ', user.gifter);
+    })
 
     console.log(candidates);
 }
@@ -98,8 +95,11 @@ function pairAllParticipants ()
 function assignment (user, candidates)
 {
     console.error(user.name);
-    let potentialGiftees = []
+    let potentialGiftees = [];
+    let potentialGifters = [];
     let giftee = null;
+    let gifter = null;
+
     //Ban Checks
     for (let i = 0; i < candidates.length; i++){
         if (candidates[i] !== user){
@@ -118,35 +118,45 @@ function assignment (user, candidates)
         }
     }
     console.log('Unbanned Potential Giftees: ', potentialGiftees);
-    //Gift Compatability Check
-    potentialGiftees.forEach((candidate, index) =>{
-        if (!user.giftee){
-            if(candidate.giftsok[user.giftType] === false){
-                potentialGiftees.splice(index, 1);
-            }
-        }
-        else if (!user.gifter){
-            if(user.giftsok[candidate.giftType] === false){
-                potentialGiftees.splice(index, 1);
-            }
-        }
-    })
-    console.log('Compatible Gift Potential Giftees: ', potentialGiftees);
-    //Check if giftee already has gifter
+
+    // If Banned by all combined with their own bans so 0 compatability
     if (potentialGiftees.length === 0){
         forAdminAttention.push(user);
         console.warn(user.name, ' None compatible. See ADMIN.');
+        return;
     }
     else{
+        potentialGifters = [...potentialGiftees];
+        // Gift Compatability Check
+        if (!user.giftee){
+            potentialGiftees.forEach((candidate, index)=>{
+                if(candidate.giftsok[user.giftType] === false){
+                    potentialGiftees.splice(index, 1);
+                }
+            })
+        }
+        // Despite first run not needing, this is safe to do, but check later conditions. gifter should only be assigned if it's a strugger...so consider that bool.
+        if (!user.gifter){
+            potentialGiftees.forEach((candidate, index)=>{
+                if(user.giftsok[candidate.giftType] === false){
+                    potentialGifters.splice(index, 1);
+                }
+            })
+        }
+    }
+    console.log('Gift Compatible Potential Giftees: ', potentialGiftees);
+    console.log('Gift Compatible Potential Giftees: ', potentialGifters);
+
+////////////////////////////////////////WE GOOD TILL HERE!
+
+    if (potentialGiftees.length > 0){
         let exceptions = [];
         while (giftee === null){
             giftee = getRandomElement(potentialGiftees, exceptions);
-            //NEED TO REFINE GIFTEE/GIFTER conditions. Maybe reintroduce a bool in the member class
-            //to refine whether this is the first time user passes through this function or struggles.
-            //For now, try going backwards, removing the new else/ifs and removing the struggle iteration.
+            //Because user will become gifter, but if potential giftee already has one...splice it in.
             if (giftee.gifter){
+                //BUT ALSO GOTTA CHECK GIFT ????
                 if (banCheck(user, giftee.gifter)){
-    
                     if (exceptions.includes(giftee)){
                         giftee = null;
                     }
@@ -156,6 +166,10 @@ function assignment (user, candidates)
                     }
                 }
                 else{
+                    //CHECK GIFT COMPATIBILITY NOW THAT WE KNOW GIFTEE.GIFTER NOT BANNED??? make connection first...where does this gift fall in
+                    if (user.giftsok[giftee.gifter.giftType]){
+                        //>>>>>translate whats happening below!
+                    }
                     if (!user.giftee){
                         user.giftee = giftee;
                         user.gifter = giftee.gifter
@@ -172,21 +186,14 @@ function assignment (user, candidates)
                         giftee.giftee = user;
                         console.log(user.name, ' NEEDED GIFTER');
                     }
-                    //MUST CONSIDER SCENARIO WHERE user IS MISSING GIFTER AND NOT GIFTEE.
-                    //I think can rememdy with if/else checking if what's missing is GIFTEE or GIFTER.
-                    //Needs a bit of thinking on it's own logic. Current results in user's GIFTEE & GIFTER === user.
-                    //If user has giftee already, then old GIFTEE is now missing a GIFTER after line below executes.
-/*                     user.giftee = giftee;
-                    user.gifter = giftee.gifter
-                    giftee.gifter.giftee = user;
-                    giftee.gifter = user; */
+
                     break;
                 }
-            }
-            else{
+            }else{
                 user.giftee = giftee;
                 giftee.gifter = user;
             }
+
             if (exceptions.length >= potentialGiftees.length){
                 if (!forAdminAttention.includes(user)){
                     forAdminAttention.push(user);
@@ -198,6 +205,11 @@ function assignment (user, candidates)
     }
     
     return giftee;
+}
+
+function reAssignCompatibles (user, candidates)
+{
+
 }
 
 function banCheck (user, nominee)
