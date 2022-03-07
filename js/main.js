@@ -83,7 +83,7 @@ function pairAllParticipants ()
         //FINDS ALL POTENTIAL GIFTEES/GIFTERS FOR PARTICIPANT
         getAllCompatible(candidates[i], candidates);
         //ASSIGNS GIFTEE TO PARTICIPANT
-        assignParticipant(candidates[i], candidates);
+        assignParticipant(candidates[i]);
         if (candidates[i].giftee){
             console.warn(candidates[i].name, ' giftee: ', candidates[i].giftee, ' gifter: ', candidates[i].gifter);
         }
@@ -105,7 +105,7 @@ function pairAllParticipants ()
     })
     //RUN EACH STRAGGLER THROUGH SPLICE PAIRER
     stragglers.forEach(user => {
-        assignParticipant(user, candidates);
+        assignParticipant(user);
         console.warn(user.name, ' giftee: ', user.giftee, ' gifter: ', user.gifter);
     })
 
@@ -132,7 +132,7 @@ function getAllCompatible (user, candidates)
         }
     }
     console.log('Unbanned Potential Giftees: ', user._compatibleGiftees, ' before GIFT check');
-    //
+    //SPREAD OPERATOR TO SHALLOW COPY GIFTEES BAN-CHECKED LIST
     user._compatibleGifters = [...user._compatibleGiftees];
     //CHECK IF POTENTIAL GIFTEES GIFT PREFS COMPATIBLE WITH USER GIFT TYPE
     user._compatibleGiftees.forEach((candidate, index)=>{
@@ -171,7 +171,7 @@ function banCheck (user, candidate)
     return false;
 }
 
-function assignParticipant (user, candidates)
+function assignParticipant (user)
 {
     console.error(user.name);
     let potentialGiftees = user._compatibleGiftees;
@@ -209,13 +209,6 @@ function assignParticipant (user, candidates)
                     break;
                 }
             }
-        }
-        else{
-            //NO POTENTIAL CANDIDATES THAT CAN ACCEPT USER'S GIFT TYPE
-            user.needsAdmin = true;
-            forAdminAttention.push(user);
-            console.warn(user.name, ' None compatible. See ADMIN.');
-            return;
         }
     }
 }
