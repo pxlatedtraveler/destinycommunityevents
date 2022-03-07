@@ -215,6 +215,42 @@ function assignParticipant (user)
 
 function spliceCompatibles (user, candidates)
 {
+    let potentialGiftees = user._compatibleGiftees;
+    let potentialGifters = user._compatibleGifters;
+    let giftee = null;
+
+    let matches = []
+
+    //FIRST, IF NOT MISSING GIFTEE && NOT MISSING GIFTER DO BELOW (or else skip to the for loop!)
+        //IF TRUE CHECK IF MISSING GIFTEE, IF A STRUGGER WHOS MISSING ONLY GIFTER MIGHT BE COMPATIBLE
+        //IF SO, WE GOOD, HIT RETURN!
+
+        //BUT!!! Gotta make sure we check if at least giftee or gifter are missing too. Cause if we assign more than
+        //one struggler successfully here, then the rest of the code should be skipped!
+
+    
+
+    //FIND POTENTIAL GIFTEE THAT HAS A GIFTER IN POTENTIALGIFTERS LIST.
+    for (let i = 0; i < potentialGiftees.length; i++){
+        if (potentialGifters.includes(potentialGiftees[i].gifter)){
+            matches.push(potentialGiftees[i]);
+            console.log("%cMATCH MADE!", "color: white; font-style: bold; background-color: green; padding: 2px");
+        }
+    }
+
+    if (matches.length === 0){
+        if (!forAdminAttention.includes(user)){
+            forAdminAttention.push(user);
+            console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+        }
+    }
+    else{
+        giftee = getRandomElement(matches);
+
+        user.giftee = giftee;
+        user.gifter = giftee.gifter;
+        giftee.gifter = user;
+    }
 
 }
 
