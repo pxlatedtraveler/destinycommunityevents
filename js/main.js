@@ -20,21 +20,21 @@ class Member
   
 const participants =
 [
-/*     new Member("ace", 0, true, false, false, ["dan", "fig"]),
+    new Member("ace", 0, true, false, false, ["dan", "fig"]),
     new Member("bee", 0, true, true, true, ["cat", "fig"]),
     new Member("cat", 1, true, true, false, ["fig"]),
     new Member("dan", 2, true, true, true, ["elf", "fig"]),
     new Member("elf", 1, false, true, false, ["hat", "fig"]),
     new Member("fig", 0, true, false, true, []),
-    new Member("gal", 0, true, true, true, ["fig"]) */
+    new Member("gal", 0, true, true, true, ["fig"])
 
-    new Member("ace", 0, true, true, true, []),
+/*     new Member("ace", 0, true, true, true, []),
     new Member("bee", 0, true, true, true, []),
     new Member("cat", 1, true, true, true, []),
     new Member("dan", 2, true, true, true, []),
     new Member("elf", 1, true, true, true, []),
     new Member("fig", 0, true, true, true, []),
-    new Member("gal", 0, true, true, true, [])
+    new Member("gal", 0, true, true, true, []) */
 ];
 
 function reset ()
@@ -69,6 +69,10 @@ function pairAllParticipants ()
     let candidates = [];
     //ARRAY THAT WILL HOLD THE UNSUCCESSFULLY SORTED (happens only if ban and/or gift prefs added)
     let stragglers = [];
+    //ARRAY TO HOLD STRAGGLERS ONLY MISSING GIFTEE
+    let noGiftee = [];
+    //ARRAY TO HOLD STRALLGERS ONLY MISSING GIFTER
+    let noGifter = [];
     //SHUFFLING PARTICIPANTS RANDOMLY AND ADDING TO NEW ARRAY
     for (let i = 0; i < participants.length; i++){
         while (candidates.length < i + 1){
@@ -84,33 +88,40 @@ function pairAllParticipants ()
         getAllCompatible(candidates[i], candidates);
         //ASSIGNS GIFTEE TO PARTICIPANT
         assignParticipant(candidates[i]);
-        if (candidates[i].giftee){
-            console.warn(candidates[i].name, ' giftee: ', candidates[i].giftee, ' gifter: ', candidates[i].gifter);
-        }
     }
     //PUSH ALL WITH NO GIFTEE OR GIFTER INTO STRAGGLER
     candidates.forEach(user => {
         if (user.giftee === null || user.gifter === null){
             user._isStraggler = true;
             stragglers.push(user);
-            console.log(user.name, ' ADDED to Stragglers');
             //IF STRAGGLER IS ALSO .needsAdmin POP OFF FROM STRAGGLER LIST
             forAdminAttention.forEach(element => {
                 if (element === user){
                     stragglers.pop();
-                    console.log('REMOVED ', user.name, ' from Stragglers');
                 }
             })
         }
     })
-    //RUN EACH STRAGGLER THROUGH SPLICE PAIRER
+    //RUN EACH STRAGGLER TO CATEGORIZE
     stragglers.forEach(user => {
-        assignParticipant(user);
-        console.warn(user.name, ' giftee: ', user.giftee, ' gifter: ', user.gifter);
+        if (!user.giftee && user.gifter){
+            noGiftee.push(user);
+        }
+        else if (user.giftee && !user.gifter){
+            noGifter.push(user);
+        }
     })
 
-    console.log(candidates);
-    console.error('List for ADMIN review: ', forAdminAttention);
+    console.log('stragglers', stragglers);
+    console.log('noGiftee', noGiftee);
+    console.log('noGifter', noGifter);
+
+    noGiftee.forEach((user)=>{
+        //THIS IS NEVER HAPPENING, INVESTIGATE!
+        //after logging above, I notice I'm not really getting the right number of stragglers...investigate.
+        //0 noGiftees which makes no sense. Results show I have at least one whenever I have a no-Gifter
+        spliceCompatibles(user);
+    });
 }
 
 function getAllCompatible (user, candidates)
@@ -121,17 +132,14 @@ function getAllCompatible (user, candidates)
             user._compatibleGiftees.push(candidates[i]);
             if (banCheck(user, candidates[i])){
                 user._compatibleGiftees.pop();
-                console.warn(user.name, 'bans ', candidates[i].name);
             }
             else{
                 if(banCheck(candidates[i], user)){
                     user._compatibleGiftees.pop();
-                    console.warn('candidate ', candidates[i].name, ' bans ', user.name);
                 }
             }
         }
     }
-    console.log('Unbanned Potential Giftees: ', user._compatibleGiftees, ' before GIFT check');
     //SPREAD OPERATOR TO SHALLOW COPY GIFTEES BAN-CHECKED LIST
     user._compatibleGifters = [...user._compatibleGiftees];
     //CHECK IF POTENTIAL GIFTEES GIFT PREFS COMPATIBLE WITH USER GIFT TYPE
@@ -173,13 +181,9 @@ function banCheck (user, candidate)
 
 function assignParticipant (user)
 {
-    console.error(user.name);
     let potentialGiftees = user._compatibleGiftees;
     let potentialGifters = user._compatibleGifters;
     let giftee = null;
-
-    console.log('Gift Compatible Potential Giftees: ', potentialGiftees);
-    console.log('Gift Compatible Potential Gifters: ', potentialGifters);
 
     if (!user.giftee){
         if (potentialGiftees.length > 0){
@@ -203,6 +207,7 @@ function assignParticipant (user)
                 //RAN THROUGH EACH POTENTIAL CANDIDATE NON WORK
                 if (exceptions.length >= potentialGiftees.length){
                     if (!forAdminAttention.includes(user)){
+                        user.needsAdmin = true;
                         forAdminAttention.push(user);
                         console.warn(user.name, ' Gifter Present Check loop canceled. See ADMIN.');
                     }
@@ -213,45 +218,85 @@ function assignParticipant (user)
     }
 }
 
-function spliceCompatibles (user, candidates)
+function spliceCompatibles (user)
 {
-    let potentialGiftees = user._compatibleGiftees;
-    let potentialGifters = user._compatibleGifters;
-    let giftee = null;
-
-    let matches = []
-
-    //FIRST, IF NOT MISSING GIFTEE && NOT MISSING GIFTER DO BELOW (or else skip to the for loop!)
-        //IF TRUE CHECK IF MISSING GIFTEE, IF A STRUGGER WHOS MISSING ONLY GIFTER MIGHT BE COMPATIBLE
-        //IF SO, WE GOOD, HIT RETURN!
-
-        //BUT!!! Gotta make sure we check if at least giftee or gifter are missing too. Cause if we assign more than
-        //one struggler successfully here, then the rest of the code should be skipped!
-
+    console.log('user in splice', user);
+    if (user._isStraggler){
+        let potentialGiftees = user._compatibleGiftees;
+        let potentialGifters = user._compatibleGifters;
+        let giftee = null;
+        let inheritor = null;
     
-
-    //FIND POTENTIAL GIFTEE THAT HAS A GIFTER IN POTENTIALGIFTERS LIST.
-    for (let i = 0; i < potentialGiftees.length; i++){
-        if (potentialGifters.includes(potentialGiftees[i].gifter)){
-            matches.push(potentialGiftees[i]);
-            console.log("%cMATCH MADE!", "color: white; font-style: bold; background-color: green; padding: 2px");
+        let matches = []
+    
+        //FIND POTENTIAL GIFTEE THAT HAS A GIFTER IN POTENTIALGIFTERS LIST.
+        for (let i = 0; i < potentialGiftees.length; i++){
+            if (potentialGifters.includes(potentialGiftees[i].gifter)){
+                matches.push(potentialGiftees[i]);
+                console.log("%cMATCH MADE!", "color: white; font-style: bold; background-color: green; padding: 2px");
+            }
+        }
+    
+        if (matches.length === 0){
+            if (!forAdminAttention.includes(user)){
+                user.needsAdmin = true;
+                forAdminAttention.push(user);
+                console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+            }
+        }
+        else{
+            //IF STRAGGLER HAS NEITHER GIFTEE OR GIFTER
+            if (!user.giftee && !user.gifter){
+                //THIS IS THE EASIEST OUTCOME
+                giftee = getRandomElement(matches);
+    
+                user.giftee = giftee;
+                user.gifter = giftee.gifter;
+                giftee.gifter = user;
+    
+                user._isStraggler = false;
+            }
+            //IF STRAGGLER IS ONLY MISSING GIFTEE
+            else if (!user.giftee && user.gifter){
+                //FOR EVERY PARTICIPANT MISSING JUST A USER THERE IS ONE MISSING A GIFTER
+                //USER'S GIFTER NEEDS TO BE ABLE TO GIFT ONE OF THE STRAGGLERS MISSING GIFTER
+                //BASICALLY WHEN THIS IS THE CASE AND NOT ABOVE, THE CYCLE OF GIFTING IS NOT A CIRCLE BUT A LINE
+                //THE ONE MISSING A GIFTER IS ON THE LEFT END POINT
+                //THE ONE MISSING A GIFTEE IS ON THE RIGHT END POINT (ASSUMING CYCLE GOES CLOCKWISE)
+                //THEREFORE ALL END POINTS THAT ARE ONE OFF AND NOT AS ABOVE MUST BE SORTED
+                //SORTED UNTIL ALL ARE EITHER COMPLETE, OR SOME ARE COMPLETE WHILE THE REST ARE AS ABOVE
+                //BY ABOVE I MEAN USER HAS NO GIFTEE AND NO GIFTER WHICH IS THE NECESSARY STATE FOR USER TO BE IN
+                //FOR A SUCCESSFULL SPLICE
+                //WHICH IS WHAT WE DO BELOW BEFORE ASSIGNING USER THEIR NEW MATCHED GIFEE/GIFTER
+                let canAdoptGifter = [];
+                //HERE WE CHECK ALL THOSE LACKING GIFTERS FOR COMPATIBILITY WITH USERS GIFTER
+                noGifter.forEach((gifterLacking, ind)=>{
+                    if (gifterLacking._compatibleGifters.includes(user.gifter)){
+                        canAdoptGifter.push(gifterLacking);
+                    }
+                })
+                if (canAdoptGifter.length > 0){
+                    inheritor = getRandomElement(canAdoptGifter);
+                    giftee = getRandomElement(matches);
+    
+                    inheritor.gifter = user.gifter;
+                    user.giftee = giftee;
+                    user.gifter = giftee.gifter;
+                    giftee.gifter = user;
+    
+                    user._isStraggler = false;
+                    inheritor._isStraggler = false;
+                }
+                else{
+                    if (!forAdminAttention.includes(user)){
+                        user.needsAdmin = true;
+                        forAdminAttention.push(user);
+                        console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+                    }
+                }
+            }
         }
     }
-
-    if (matches.length === 0){
-        if (!forAdminAttention.includes(user)){
-            forAdminAttention.push(user);
-            console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
-        }
-    }
-    else{
-        giftee = getRandomElement(matches);
-
-        user.giftee = giftee;
-        user.gifter = giftee.gifter;
-        giftee.gifter = user;
-    }
-
 }
 
 //////////////////////////////////////////////////
@@ -305,8 +350,6 @@ function createTable(table, object)
     
                 if (getKeyByValue(participants[participants.indexOf(element)], element[object]) === 'giftee'){
                     if (element[object] !== null){
-                        console.warn('GIFTEE NOT NULL!');
-                        console.error(element.name, getKeyByValue(participants[participants.indexOf(element)], element[object]));
                         if (element[object] !== null){
                             text = document.createTextNode(element.giftee.name);
                             cell.append(text);
@@ -320,8 +363,6 @@ function createTable(table, object)
                 }
                 else if (getKeyByValue(participants[participants.indexOf(element)], element[object]) === 'gifter'){
                     if (element[object] !== null){
-                        console.warn('GIFTER NOT NULL!');
-                        console.error(element.name, getKeyByValue(participants[participants.indexOf(element)], element[object]));
                         if (element[object] !== null){
                             text = document.createTextNode(element.gifter.name);
                             cell.append(text);
@@ -336,7 +377,6 @@ function createTable(table, object)
                     text = document.createTextNode(element[object]);
                     cell.appendChild(text);
                 }
-                console.log(element.name, ':', element[object]);
             }
         }
     }
