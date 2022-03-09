@@ -1,3 +1,20 @@
+/*
+ * //Destiny Community Events Exchange Sorter
+ * 
+ * //Description:
+ * //Proof of concept for sorting members participating in an exchange.
+ * //In a perfect world, the exchange is intended to happen in a circular format
+ * //EX: A gives to B, B gives to C, C gives to D, D gives to A.
+ * //This script takes into consideration the conditions of each member.
+ * //Each member has member-compatability and exchange preferences. Not all can always be sorted.
+ * //In the most unfortunate circumstance that all members ban a specific member for example.
+ * //conditions may make it more likely for certain outcomes to almost always happen. However,
+ * //This script is intended to be used with enough members to add variety, and it's also
+ * //expected that most members wont have unique conditions.
+ * 
+ * //Author: Ruby || PxlatedTraveler
+ */
+
 let forAdminAttention = []; //USERS WHO'LL NEED ADMIN ATTENTION
 
 class Member
