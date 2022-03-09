@@ -71,8 +71,10 @@ function pairAllParticipants ()
     let stragglers = [];
     //ARRAY TO HOLD STRAGGLERS ONLY MISSING GIFTEE
     let noGiftee = [];
-    //ARRAY TO HOLD STRALLGERS ONLY MISSING GIFTER
+    //ARRAY TO HOLD STRAGGLERS ONLY MISSING GIFTER
     let noGifter = [];
+    //ARRAY TO HOLD STRAGGLERS WITH NO GIFTEE NO GIFTER
+    let noGifteeNoGifter = [];
     //SHUFFLING PARTICIPANTS RANDOMLY AND ADDING TO NEW ARRAY
     for (let i = 0; i < participants.length; i++){
         while (candidates.length < i + 1){
@@ -88,16 +90,20 @@ function pairAllParticipants ()
         getAllCompatible(candidates[i], candidates);
         //ASSIGNS GIFTEE TO PARTICIPANT
         assignParticipant(candidates[i]);
+        console.error(candidates[i]);
+        console.log(candidates[i].name, "GIFTEE:", candidates[i].giftee);
     }
     //PUSH ALL WITH NO GIFTEE OR GIFTER INTO STRAGGLER
     candidates.forEach(user => {
-        if (user.giftee === null || user.gifter === null){
+        if (!user.giftee || !user.gifter){
             user._isStraggler = true;
             stragglers.push(user);
+            console.warn(user.name, 'added to Stragglers');
             //IF STRAGGLER IS ALSO .needsAdmin POP OFF FROM STRAGGLER LIST
             forAdminAttention.forEach(element => {
                 if (element === user){
                     stragglers.pop();
+                    console.warn(user.name, 'removed from stragglers');
                 }
             })
         }
@@ -110,17 +116,24 @@ function pairAllParticipants ()
         else if (user.giftee && !user.gifter){
             noGifter.push(user);
         }
+        else if (!user.giftee && !user.gifter){
+            noGifteeNoGifter.push(user);
+        }
     })
 
     console.log('stragglers', stragglers);
     console.log('noGiftee', noGiftee);
     console.log('noGifter', noGifter);
 
+    noGifteeNoGifter.forEach((user)=>{
+        //RUN EACH noGifteeNoGifter THROUGH SPLICE WHICH IS AN EASIER CASE TO TAKE CARE OF
+        spliceCompatibles(user, noGifter);
+    })
+
     noGiftee.forEach((user)=>{
-        //THIS IS NEVER HAPPENING, INVESTIGATE!
-        //after logging above, I notice I'm not really getting the right number of stragglers...investigate.
-        //0 noGiftees which makes no sense. Results show I have at least one whenever I have a no-Gifter
-        spliceCompatibles(user);
+        //FOR EVERY NOGIFTEE THERE IS A NOGIFTER AND AMONG THEM IS A PAIR THAT ARE INCOMPATIBLE
+        //WHEN NOGIFTEES ARE RUN THROUGH SPLICER IF SUCCESSFUL IT WILL ALSO TAKE CARE OF A NOGIFTER
+        spliceCompatibles(user, noGifter);
     });
 }
 
@@ -206,11 +219,8 @@ function assignParticipant (user)
                 }
                 //RAN THROUGH EACH POTENTIAL CANDIDATE NON WORK
                 if (exceptions.length >= potentialGiftees.length){
-                    if (!forAdminAttention.includes(user)){
-                        user.needsAdmin = true;
-                        forAdminAttention.push(user);
-                        console.warn(user.name, ' Gifter Present Check loop canceled. See ADMIN.');
-                    }
+                    //CURRENT MATCHINGS LEAVE NO ROOM FOR USER TRY SPLICING THEM
+                    user._isStraggler = true;
                     break;
                 }
             }
@@ -218,7 +228,7 @@ function assignParticipant (user)
     }
 }
 
-function spliceCompatibles (user)
+function spliceCompatibles (user, noGifter)
 {
     console.log('user in splice', user);
     if (user._isStraggler){
@@ -241,7 +251,8 @@ function spliceCompatibles (user)
             if (!forAdminAttention.includes(user)){
                 user.needsAdmin = true;
                 forAdminAttention.push(user);
-                console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+                console.warn(user.name, ':')
+                console.log("%cNO SECONDARY MATCHES DUE TO CURRENT SORTING SPECIFICS (gifters of all that user can gift are not compatible). See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
             }
         }
         else{
@@ -253,8 +264,11 @@ function spliceCompatibles (user)
                 user.giftee = giftee;
                 user.gifter = giftee.gifter;
                 giftee.gifter = user;
+                user.gifter.giftee = user;
     
                 user._isStraggler = false;
+                console.log(user.name,':')
+                console.log("%cNO LONGER STRAGGLER via noGifteeNoGifter!", "color: white; font-style: bold; background-color: green; padding: 2px");
             }
             //IF STRAGGLER IS ONLY MISSING GIFTEE
             else if (!user.giftee && user.gifter){
@@ -280,18 +294,23 @@ function spliceCompatibles (user)
                     giftee = getRandomElement(matches);
     
                     inheritor.gifter = user.gifter;
+                    inheritor.gifter.giftee = inheritor;
                     user.giftee = giftee;
                     user.gifter = giftee.gifter;
                     giftee.gifter = user;
+                    user.gifter.giftee = user;
     
                     user._isStraggler = false;
                     inheritor._isStraggler = false;
+                    console.log(user.name, 'AND', inheritor.name, ":");
+                    console.log("%cNO LONGER STRAGGLER via noGiftee!", "color: white; font-style: bold; background-color: green; padding: 2px");
                 }
                 else{
                     if (!forAdminAttention.includes(user)){
                         user.needsAdmin = true;
                         forAdminAttention.push(user);
-                        console.warn(user.name, "%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+                        console.warn(user.name, ':');
+                        console.log("%cNO SECONDARY MATCHES. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
                     }
                 }
             }
