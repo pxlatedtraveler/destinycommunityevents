@@ -100,12 +100,10 @@ function pairAllParticipants ()
             stragglers.push(user);
             console.warn(user.name, 'added to Stragglers');
             //IF STRAGGLER IS ALSO .needsAdmin POP OFF FROM STRAGGLER LIST
-            forAdminAttention.forEach(element => {
-                if (element === user){
-                    stragglers.pop();
-                    console.warn(user.name, 'removed from stragglers');
-                }
-            })
+            if (forAdminAttention.includes(user)){
+                stragglers.pop();
+                console.warn(user.name, 'removed from stragglers');
+            }
         }
     })
     //RUN EACH STRAGGLER TO CATEGORIZE
@@ -135,6 +133,11 @@ function pairAllParticipants ()
         //WHEN NOGIFTEES ARE RUN THROUGH SPLICER IF SUCCESSFUL IT WILL ALSO TAKE CARE OF A NOGIFTER
         spliceCompatibles(user, noGifter);
     });
+
+    //LEFTOVERS NEED ADMIN ATTENTION
+    participants.forEach((user)=>{
+        checkNeedsAdmin(user);
+    })
 }
 
 function getAllCompatible (user, candidates)
@@ -188,6 +191,20 @@ function banCheck (user, candidate)
                 return true;
             }
         }
+    }
+    return false;
+}
+
+function checkNeedsAdmin (user)
+{
+    //RUN THIS AT END PARTICULARLY TO MARK GIFTERS WHO NEVER GOT A GIFTER
+    if(!user.giftee || !user.gifter){
+        user.needsAdmin = true;
+
+        console.warn(user.name);
+        console.log("%cHAS NO GIFTEE OR GIFTER OR BOTH. See ADMIN.", "color: white; font-style: bold; background-color: purple; padding: 2px");
+
+        return true;
     }
     return false;
 }
